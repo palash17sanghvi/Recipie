@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredient Selector</title>
+    <style>
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.5;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, rgba(30, 58, 138, 0.3), rgba(30, 64, 175, 0.3));
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        body::before {
+            top: -100px;
+            left: -100px;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        body::after {
+            bottom: -100px;
+            right: -100px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 30px); }
+        }
+        .category {
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.7);
+            transition: transform 0.2s ease;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .category:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .category-header {
+            padding: 16px;
+            cursor: pointer;
+            position: relative;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+        }
+
+        .category-header:hover {
+            background: linear-gradient(90deg, rgba(168, 85, 247, 0.4), rgba(99, 102, 241, 0.4));
+            padding-left: 20px;
+        }
+        .category-header:hover {
+            background-color: #3d3d3d;
+        }
+        .category-header::after {
+            content: '▼';
+            position: absolute;
+            right: 15px;
+            transition: transform 0.3s ease;
+        }
+        .category-header.active::after {
+            transform: rotate(180deg);
+        }
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease-in-out;
+            padding: 0 15px;
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.2), rgba(67, 56, 202, 0.2));
+            color: #ffffff;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        .category-content.show {
+            opacity: 1;
+            transform: translateY(0);
+            padding: 15px;
+            max-height: 1000px;
+        }
+        .category-content.show {
+            max-height: 1000px;
+            padding: 15px;
+        }
+        .ingredient-item {
+            margin: 0;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #ffffff;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 41, 59, 0.5);
+        }
+
+        .ingredient-item:hover {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .ingredient-item:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .ingredient-item:hover {
+            background: #f8f8f8;
+        }
+        .ingredient-item:hover {
+            background-color: #3d3d3d;
+        }
+        @keyframes priceGlow {
+            0% { text-shadow: 0 0 5px rgba(255,215,0,0); }
+            50% { text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+            100% { text-shadow: 0 0 5px rgba(255,215,0,0); }
+        }
+
+        .ingredient-price {
+            margin-left: auto;
+            color: #666666;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        #whitelist {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #2d2d2d;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .whitelist-item {
+            margin: 4px;
+            padding: 8px 16px;
+            background: rgba(30, 41, 59, 0.5);
+            color: #ffffff;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .whitelist-item:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .whitelist-item:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .whitelist-item:hover {
+            background: #ffede3;
+        }
+        .whitelist-item:hover {
+            background-color: #d9d9d9;
+        }
+        .remove-btn {
+            margin-left: 5px;
+            color: #ff4444;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .remove-btn:hover {
+            color: #cc0000;
+        }
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        #searchInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(30, 41, 59, 0.5);
+            color: #ffffff;
+            outline: none;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        #searchInput:focus {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #searchInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #searchInput:focus {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 20px rgba(100, 100, 100, 0.1);
+        }
+        
+        #searchInput:focus {
+            border-color: #666666;
+        }
+        .search-container button {
+            padding: 10px 20px;
+            background-color: #3d3d3d;
+            border: 1px solid #3d3d3d;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: #ffffff;
+        }
+        .search-container button:hover {
+            background-color: #e0e0e0;
+        }
+        .no-results {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+        .highlight {
+            background-color: #fff3cd;
+        }
+        .hidden {
+            display: none;
+        }
+        @keyframes buttonPulse {
+            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5); }
+            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3); }
+        }
+
+        #proceed-btn {
+            display: block;
+            width: 180px;
+            margin: 24px auto;
+            padding: 14px 24px;
+            background: rgba(30, 41, 59, 0.8);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        #proceed-btn:not(:disabled):hover {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #proceed-btn:disabled {
+            background: rgba(30, 41, 59, 0.3);
+            color: rgba(255, 255, 255, 0.4);
+            cursor: not-allowed;
+        }
+
+        #proceed-btn:not(:disabled):hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        #proceed-btn:disabled {
+            background: rgba(200, 200, 200, 0.3);
+            cursor: not-allowed;
+        }
+
+        #proceed-btn:not(:disabled):hover {
+            background: #222222;
+        }
+
+        #proceed-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #proceed-btn:not(:disabled):hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+        }
+
+        #proceed-btn:disabled {
+            background: #fcd9c5;
+            cursor: not-allowed;
+        }
+
+        #proceed-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            background: linear-gradient(45deg, #16a34a, #15803d);
+        }
+        #proceed-btn:hover {
+            background-color: #45a049;
+        }
+        #proceed-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ingredient Selector</h1>
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search ingredients..." />
+        <button onclick="clearSearch()">Clear</button>
+    </div>
+    <div id="categories"></div>
+    <div id="whitelist">
+        <h2>Selected Ingredients</h2>
+        <div id="whitelist-items"></div>
+    </div>
+    <button id="proceed-btn" disabled onclick="proceedToRecipe()">Proceed to Recipe</button>
+
+    <script>
+        const ingredients = {
+            "Dairy & Alternatives": [
+                "butter", "buttermilk", "cheese", "cream", "egg", "margarine", "milk", "yogurt"
+            ],
+            "Proteins": [
+                "bacon", "beef", "chicken", "chorizo", "crab", "fish", "ham", "lamb", "meatball",
+                "meatloaf", "pepperoni", "pork", "prosciutto", "roast", "salmon", "sausage",
+                "shrimp", "steak", "tofu", "turkey", "tuna", "venison"
+            ],
+            "Vegetables & Fungi": [
+                "artichoke", "arugula", "asparagus", "avocado", "bamboo", "bean", "beet",
+                "broccoli", "cabbage", "carrot", "cauliflower", "celery", "chile", "chive",
+                "cilantro", "corn", "cucumber", "eggplant", "endive", "fennel", "garlic",
+                "ginger", "jalapeno", "kale", "leek", "lentil", "lettuce", "mushroom",
+                "okra", "olive", "onion", "parsley", "parsnip", "pea", "pepper", "pickle",
+                "pimiento", "potato", "pumpkin", "radish", "rhubarb", "scallion", "seaweed",
+                "shallot", "spinach", "squash", "tomatillo", "tomato", "turnip", "zucchini"
+            ],
+            "Fruits": [
+                "apple", "apricot", "banana", "berry", "blueberry", "cherry", "coconut",
+                "cranberry", "date", "fig", "grape", "grapefruit", "kiwi", "lemon", "lime",
+                "mango", "melon", "nectarine", "orange", "papaya", "peach", "pear",
+                "pineapple", "plum", "pomegranate", "prune", "raisin", "raspberry", "strawberry"
+            ],
+            "Grains, Pasta & Baking": [
+                "bagel", "barley", "biscuit", "bran", "bread", "cake", "cereal", "chip",
+                "cookie", "cornbread", "cornmeal", "cornstarch", "cracker", "crouton",
+                "dough", "flour", "granola", "macaroni", "noodle", "oat", "pancake",
+                "pasta", "pie", "pita", "pizza", "popcorn", "pretzel", "quinoa", "rice",
+                "roll", "shortening", "soda", "spelt", "taco", "tater", "tortilla",
+                "waffle", "yeast"
+            ],
+            "Nuts & Seeds": [
+                "almond", "cashew", "chestnut", "flax", "hemp", "nut", "peanut", "pecan",
+                "pine", "pistachio", "poppy", "seed", "sesame", "sunflower", "walnut"
+            ],
+            "Sweeteners & Syrups": [
+                "caramel", "chocolate", "honey", "jam", "jelly", "maple", "molasses",
+                "sugar", "syrup"
+            ],
+            "Spices, Herbs & Seasonings": [
+                "allspice", "anise", "basil", "bay", "capers", "caraway", "cardamom",
+                "cayenne", "celery", "chili", "cinnamon", "clove", "coriander", "cumin",
+                "curry", "dill", "fennel", "garlic", "ginger", "horseradish", "mace",
+                "marjoram", "mint", "mustard", "nutmeg", "oregano", "paprika", "pepper",
+                "peppercorn", "rosemary", "saffron", "sage", "salt", "savory", "tarragon",
+                "thyme", "turmeric", "vanilla"
+            ],
+            "Condiments, Sauces & Oils": [
+                "bouillon", "broth", "bouillon", "dressing", "gravy", "guacamole",
+                "hoisin", "ketchup", "lard", "marinade", "mayonnaise", "miso", "oil",
+                "pesto", "relish", "salsa", "sauce", "shortening", "soup", "tahini",
+                "teriyaki", "vinegar", "wasabi", "worcestershire"
+            ],
+            "Liquids": [
+                "bouillon", "broth", "cider", "coffee", "juice", "liqueur", "rum",
+                "soda", "tea", "tequila", "vermouth", "vodka", "water", "whiskey", "wine"
+            ]
+        };
+
+        const whitelist = new Set();
+
+        // Create category sections
+        const categoriesDiv = document.getElementById('categories');
+        Object.entries(ingredients).forEach(([category, items]) => {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'category';
+            
+            const header = document.createElement('div');
+            header.className = 'category-header';
+            header.textContent = category;
+            header.onclick = () => toggleCategory(header, header.nextElementSibling);
+            
+            const content = document.createElement('div');
+            content.className = 'category-content';
+            
+            // Load ingredient prices once when creating ingredients list
+            loadIngredientPrices().then(prices => {
+                items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'ingredient-item';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = item;
+                    checkbox.onchange = () => toggleIngredient(item, checkbox.checked);
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = item;
+                    label.textContent = item;
+                    
+                    const priceSpan = document.createElement('span');
+                    priceSpan.className = 'ingredient-price';
+                    if (prices && prices[item]) {
+                        priceSpan.textContent = `$${prices[item].toFixed(2)}`;
+                    }
+                    
+                    itemDiv.appendChild(checkbox);
+                    itemDiv.appendChild(label);
+                    itemDiv.appendChild(priceSpan);
+                    content.appendChild(itemDiv);
+                });
+            }).catch(error => {
+                console.error('Error loading prices:', error);
+            });
+            
+            categoryDiv.appendChild(header);
+            categoryDiv.appendChild(content);
+            categoriesDiv.appendChild(categoryDiv);
+        });
+
+        // Toggle category visibility
+        function toggleCategory(header, content) {
+            header.classList.toggle('active');
+            content.classList.toggle('show');
+        }
+
+        // Toggle ingredient in whitelist
+        function toggleIngredient(ingredient, checked) {
+            if (checked) {
+                whitelist.add(ingredient);
+            } else {
+                whitelist.delete(ingredient);
+            }
+            updateWhitelist();
+        }
+
+        // Update whitelist display
+        function updateWhitelist() {
+            const whitelistDiv = document.getElementById('whitelist-items');
+            whitelistDiv.innerHTML = '';
+            
+            whitelist.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'whitelist-item';
+                item.innerHTML = `
+                    ${ingredient}
+                    <span class="remove-btn" onclick="removeFromWhitelist('${ingredient}')">&times;</span>
+                `;
+                whitelistDiv.appendChild(item);
+            });
+        }
+
+        // Remove ingredient from whitelist
+        function removeFromWhitelist(ingredient) {
+            whitelist.delete(ingredient);
+            document.getElementById(ingredient).checked = false;
+            updateWhitelist();
+        }
+
+        // Search functionality
+        function searchIngredients(searchTerm) {
+            const term = searchTerm.toLowerCase();
+            let hasResults = false;
+
+            document.querySelectorAll('.category').forEach(category => {
+                let categoryHasMatch = false;
+                const items = category.querySelectorAll('.ingredient-item');
+                
+                items.forEach(item => {
+                    const label = item.querySelector('label');
+                    const text = label.textContent.toLowerCase();
+                    
+                    if (text.includes(term)) {
+                        item.classList.remove('hidden');
+                        if (term !== '') {
+                            label.innerHTML = highlightText(label.textContent, searchTerm);
+                        } else {
+                            label.textContent = label.textContent; // Reset highlighting
+                        }
+                        categoryHasMatch = true;
+                        hasResults = true;
+                    } else {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                if (categoryHasMatch && term !== '') {
+                    category.querySelector('.category-content').classList.add('show');
+                    category.querySelector('.category-header').classList.add('active');
+                } else if (term === '') {
+                    category.querySelector('.category-content').classList.remove('show');
+                    category.querySelector('.category-header').classList.remove('active');
+                }
+
+                // Hide empty categories
+                category.style.display = (categoryHasMatch || term === '') ? '' : 'none';
+            });
+
+            // Show no results message if needed
+            const noResults = document.getElementById('noResults');
+            if (noResults) {
+                noResults.remove();
+            }
+            if (!hasResults && term !== '') {
+                const message = document.createElement('div');
+                message.id = 'noResults';
+                message.className = 'no-results';
+                message.textContent = 'No ingredients found matching your search.';
+                document.getElementById('categories').appendChild(message);
+            }
+        }
+
+        function highlightText(text, searchTerm) {
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            searchIngredients('');
+        }
+
+        // Add search input event listener
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchIngredients(e.target.value);
+        });
+
+        // Initialize with closed categories
+        document.querySelectorAll('.category-content').forEach(content => {
+            content.classList.remove('show');
+            content.parentElement.querySelector('.category-header').classList.remove('active');
+        });
+
+        // Enable/disable proceed button based on whitelist
+        function updateProceedButton() {
+            const proceedBtn = document.getElementById('proceed-btn');
+            proceedBtn.disabled = whitelist.size === 0;
+        }
+
+        // Update proceed button when whitelist changes
+        const originalUpdateWhitelist = updateWhitelist;
+        updateWhitelist = function() {
+            originalUpdateWhitelist();
+            updateProceedButton();
+        };
+
+        // Load recipes and navigate to recipe page
+        async function loadRecipes() {
+            try {
+                const response = await fetch('recipes_with_components.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const recipes = await response.json();
+                return recipes;
+            } catch (error) {
+                console.error('Error loading recipes:', error);
+                return null;
+            }
+        }
+
+        function loadIngredientPrices() {
+            // Hardcoded prices based on Ingredients.txt
+            const prices = {
+                "butter": 4.50, "buttermilk": 3.00, "cheese": 5.00, "cream": 3.50,
+                "egg": 4.00, "margarine": 3.00, "milk": 4.00, "yogurt": 1.50,
+                "bacon": 6.00, "beef": 7.00, "chicken": 5.00, "chorizo": 5.50,
+                "crab": 15.00, "fish": 10.00, "ham": 4.00, "lamb": 12.00,
+                "meatball": 8.00, "meatloaf": 9.00, "pepperoni": 4.00, "pork": 4.50,
+                "prosciutto": 9.00, "roast": 15.00, "salmon": 12.00, "sausage": 6.00,
+                "shrimp": 11.00, "steak": 14.00, "tofu": 3.00, "turkey": 3.00,
+                "tuna": 1.50, "venison": 18.00, "artichoke": 2.50, "arugula": 3.50,
+                "asparagus": 4.00, "avocado": 1.50, "bamboo": 3.00, "bean": 1.50,
+                "beet": 2.50, "broccoli": 2.00, "cabbage": 2.50, "carrot": 1.50,
+                "cauliflower": 3.50, "celery": 2.00, "chile": 0.50, "chive": 2.00,
+                "cilantro": 1.00, "corn": 0.75, "cucumber": 1.00, "eggplant": 2.00,
+                "endive": 3.00, "fennel": 2.50, "garlic": 0.75, "ginger": 1.50,
+                "jalapeno": 0.25, "kale": 2.50, "leek": 3.00, "lentil": 2.00,
+                "lettuce": 2.50, "mushroom": 3.00, "okra": 4.00, "olive": 4.00,
+                "onion": 1.00, "parsley": 1.50, "parsnip": 2.50, "pea": 2.00,
+                "pepper": 1.50, "pickle": 4.00, "pimiento": 3.00, "potato": 1.00,
+                "pumpkin": 5.00, "radish": 2.00, "rhubarb": 4.50, "scallion": 1.00,
+                "seaweed": 4.00, "shallot": 1.00, "spinach": 3.00, "squash": 1.50,
+                "tomatillo": 2.00, "tomato": 0.75, "turnip": 1.50, "zucchini": 1.00,
+                "apple": 1.00, "apricot": 0.75, "banana": 0.25, "berry": 4.00,
+                "blueberry": 4.50, "cherry": 5.00, "coconut": 3.00, "cranberry": 3.50,
+                "date": 6.00, "fig": 1.00, "grape": 3.00, "grapefruit": 1.25,
+                "kiwi": 0.75, "lemon": 0.75, "lime": 0.50, "mango": 1.50,
+                "melon": 4.00, "nectarine": 0.75, "orange": 1.00, "papaya": 3.50,
+                "peach": 0.75, "pear": 1.00, "pineapple": 3.50, "plum": 0.50,
+                "pomegranate": 2.50, "prune": 5.00, "raisin": 4.00, "raspberry": 5.00,
+                "strawberry": 4.00, "bagel": 1.50, "barley": 3.00, "biscuit": 3.50,
+                "bran": 4.00, "bread": 3.50, "cake": 15.00, "cereal": 4.50,
+                "chip": 4.00, "cookie": 4.00, "cornbread": 3.50, "cornmeal": 3.00,
+                "cornstarch": 2.00, "cracker": 3.50, "crouton": 2.50, "dough": 4.00,
+                "flour": 4.00, "granola": 5.00, "macaroni": 1.50, "noodle": 2.50,
+                "oat": 4.00, "pancake": 3.00, "pasta": 2.00, "pie": 12.00,
+                "pita": 3.00, "pizza": 10.00, "popcorn": 3.00, "pretzel": 3.50,
+                "quinoa": 6.00, "rice": 3.00, "roll": 3.50, "shortening": 5.00,
+                "soda": 2.50, "spelt": 7.00, "taco": 2.50, "tater": 4.00,
+                "tortilla": 3.00, "waffle": 4.50, "yeast": 2.00, "almond": 8.00,
+                "cashew": 9.00, "chestnut": 6.00, "flax": 4.00, "hemp": 7.00,
+                "nut": 7.00, "peanut": 5.00, "pecan": 9.00, "pine": 10.00,
+                "pistachio": 8.00, "poppy": 4.00, "seed": 3.00, "sesame": 5.00,
+                "sunflower": 3.00, "walnut": 7.00, "caramel": 4.00, "chocolate": 3.50,
+                "honey": 6.00, "jam": 4.00, "jelly": 3.50, "maple": 8.00,
+                "molasses": 4.00, "sugar": 3.50, "syrup": 3.00, "allspice": 4.00,
+                "anise": 4.50, "basil": 3.50, "bay": 3.00, "capers": 3.50,
+                "caraway": 4.00, "cardamom": 7.00, "cayenne": 3.00, "chili": 3.00,
+                "cinnamon": 3.50, "clove": 5.00, "coriander": 4.00, "cumin": 4.00,
+                "curry": 4.00, "dill": 3.50, "horseradish": 4.00, "mace": 6.00,
+                "marjoram": 4.00, "mint": 2.50, "mustard": 3.00, "nutmeg": 5.00,
+                "oregano": 3.00, "paprika": 3.50, "peppercorn": 4.50, "rosemary": 3.00,
+                "saffron": 15.00, "sage": 3.00, "salt": 2.00, "savory": 4.50,
+                "tarragon": 5.00, "thyme": 3.00, "turmeric": 4.00, "vanilla": 12.00,
+                "bouillon": 3.00, "broth": 3.00, "dressing": 4.00, "gravy": 2.00,
+                "guacamole": 5.00, "hoisin": 4.50, "ketchup": 4.00, "lard": 6.00,
+                "marinade": 3.50, "mayonnaise": 5.00, "miso": 6.00, "oil": 5.00,
+                "pesto": 4.50, "relish": 2.50, "salsa": 4.00, "sauce": 3.00,
+                "soup": 2.50, "tahini": 7.00, "teriyaki": 4.00, "vinegar": 3.00,
+                "wasabi": 4.00, "worcestershire": 3.50, "cider": 5.00, "coffee": 9.00,
+                "juice": 4.00, "liqueur": 25.00, "rum": 20.00, "tea": 4.00,
+                "tequila": 30.00, "vermouth": 12.00, "vodka": 18.00, "water": 2.00,
+                "whiskey": 28.00, "wine": 12.00
+            };
+            return Promise.resolve(prices);
+        }
+
+        async function proceedToRecipe() {
+            const recipes = await loadRecipes();
+            const prices = await loadIngredientPrices();
+            
+            if (!recipes || !prices) {
+                alert('Error loading data. Please try again.');
+                return;
+            }
+            
+            const selectedIngredients = Array.from(whitelist);
+            const data = {
+                ingredients: selectedIngredients,
+                recipes: recipes,
+                prices: prices
+            };
+            
+            sessionStorage.setItem('recipeData', JSON.stringify(data));
+            window.location.href = 'recipe.html';
+        }
+    </script>
+</body>
+</html>

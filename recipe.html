@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Display</title>
+    <style>
+        @keyframes gradientBG {
+            0%         .ingredient-price {
+            color: #ffd700;
+            margin-left: 10px;
+            font-size: 0.9em;
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(90deg, 
+                rgba(249, 168, 212, 0.2), 
+                rgba(216, 180, 254, 0.3) 25%, 
+                rgba(129, 140, 248, 0.3) 75%, 
+                rgba(56, 189, 248, 0.2) 100%);
+            background-size: 200% 100%;
+            border-radius: 12px;position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #ffffff;
+            min-height: 100vh;
+            line-height: 1.5;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Glass background orbs for liquid effect */
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, rgba(30, 58, 138, 0.3), rgba(30, 64, 175, 0.3));
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        body::before {
+            top: -100px;
+            left: -100px;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        body::after {
+            bottom: -100px;
+            right: -100px;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 30px); }
+        }
+        .instruction-text {
+            text-align: center;
+            color: #bebebe;
+            margin: 20px 0;
+            font-size: 18px;
+            animation: fadeInOut 2s infinite;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        @keyframes cardGlow {
+            0% { box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 0 rgba(76, 175, 80, 0); }
+            50% { box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 20px rgba(76, 175, 80, 0.2); }
+            100% { box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        .recipe-card {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px auto;
+            max-width: 600px;
+            position: relative;
+            transition: transform 0.2s ease;
+            cursor: grab;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .recipe-card.swipe-right {
+            animation: swipeRight 0.5s ease-out forwards;
+        }
+
+        .recipe-card.swipe-left {
+            animation: swipeLeft 0.5s ease-out forwards;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+        
+        .recipe-card.swiping {
+            cursor: grabbing;
+        }
+        
+        @keyframes overlayPop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes swipeRight {
+            to { transform: translateX(150%) rotate(30deg); opacity: 0; }
+        }
+
+        @keyframes swipeLeft {
+            to { transform: translateX(-150%) rotate(-30deg); opacity: 0; }
+        }
+
+        .swipe-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            backdrop-filter: blur(4px);
+            animation: overlayPop 0.3s ease-out;
+        }
+        
+        .swipe-overlay.like {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            border-radius: 20px;
+        }
+        
+        .swipe-overlay.nope {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+            border-radius: 20px;
+        }
+        .recipe-title {
+            color: #ffffff;
+            font-size: 28px;
+            margin-bottom: 24px;
+            text-align: center;
+            font-weight: 600;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .ingredients-list, .instructions, .components-list {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        #ingredientsList li {
+            padding: 12px 0;
+            color: #ffffff;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            line-height: 1.4;
+        }
+
+        #instructionsText {
+            line-height: 1.8;
+            color: #e0e0e0;
+            padding: 10px;
+        }
+        .section-title {
+            color: #333333;
+            font-size: 14px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        /* Custom scrollbar styling */
+        .modal-content::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        .modal-content::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 5px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .modal-content {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            margin: 5vh auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            text-align: left;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .modal-button {
+            background-color: #3e8741;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        .modal-button:hover {
+            background-color: #45a049;
+        }
+        .components-list ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .components-list li {
+            background-color: #3d3d3d;
+            color: #ffffff;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+        .components-list li.matched-ingredient {
+            background-color: #a7bea8;
+            color: white;
+        }
+        .matched-ingredient {
+            color: #60a5fa;
+            font-weight: 500;
+        }
+        @keyframes priceShine {
+            0% { background-position: -100% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .ingredient-price {
+            color: #666666;
+            font-size: 0.9em;
+            margin-left: 12px;
+            font-weight: 500;
+        }
+
+        .ingredient-price:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: scale(1.1);
+        }
+        .total-price {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f5f5f5;
+            color: #333333;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 4px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .total-price:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.25));
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            padding: 10px;
+        }
+        @keyframes buttonPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .action-button {
+            width: 48px;
+            height: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 41, 59, 0.8);
+            color: #ffffff;
+            padding: 0;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-button:hover {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .action-button:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .action-button:hover {
+            background: #222222;
+        }
+        
+        .action-button:hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+        }
+
+        .action-button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .action-button:hover::after {
+            opacity: 1;
+        }
+
+        #likeBtn {
+            animation: buttonPulse 2s infinite;
+            animation-delay: 0.5s;
+        }
+
+        .action-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+
+        .action-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        #likeBtn {
+            background: linear-gradient(45deg, #db2777, #9333ea);
+            color: white;
+        }
+        #likeBtn:hover {
+            background-color: #45a049;
+        }
+        #dislikeBtn {
+            background: linear-gradient(45deg, #dc2626, #b91c1c);
+            color: white;
+        }
+        #dislikeBtn:hover {
+            background-color: #da190b;
+        }
+
+        #backBtn {
+            background-color: #757575;
+            color: white;
+            margin-right: 10px;
+        }
+        #backBtn:hover {
+            background-color: #616161;
+        }
+        #savedBtn {
+            background-color: #2196F3;
+            color: white;
+            margin-left: 10px;
+        }
+        #savedBtn:hover {
+            background-color: #1976D2;
+        }
+        .saved-recipe {
+            background-color: #3d3d3d;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .saved-recipe h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            cursor: pointer;
+        }
+        .saved-recipe h3:hover {
+            opacity: 0.9;
+        }
+        .saved-recipe-details {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #4a4a4a;
+        }
+        .saved-recipe-details.show {
+            display: block;
+        }
+        .saved-recipe-section {
+            margin: 10px 0;
+        }
+        .saved-recipe-section h4 {
+            color: #bebebe;
+            margin: 10px 0;
+        }
+        .saved-recipe ul {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        .saved-recipe-components {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .saved-recipe-component {
+            background-color: #4a4a4a;
+            color: #ffffff;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="modal" id="savedRecipesModal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Saved Recipes</h2>
+                <button class="modal-button" onclick="closeSavedRecipes()" style="margin: 0;">Close</button>
+            </div>
+            <div id="savedRecipesList"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="completionModal">
+        <div class="modal-content">
+            <h2>All Done!</h2>
+            <p>You've seen all recipes matching your selected ingredients.</p>
+            <p>Would you like to try different ingredients?</p>
+            <button class="modal-button" onclick="goBack()">Back to Ingredients</button>
+        </div>
+    </div>
+    <div id="recipeCardContainer" style="position: relative;">
+        <div class="recipe-card" id="recipeCard">
+            <div class="swipe-overlay like">YUMMY!</div>
+            <div class="swipe-overlay nope">NOPE!</div>
+            <h1 class="recipe-title" id="recipeTitle"></h1>
+            <div class="ingredients-list" style="margin-bottom: 0;">
+                <h2 class="section-title">Ingredients:</h2>
+                <ul id="ingredientsList"></ul>
+            </div>
+            <div class="instructions" style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(79, 70, 229, 0.2)); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                <p id="instructionsText" style="line-height: 1.8; color: #f0f0f0; white-space: pre-line; text-shadow: 0 1px 2px rgba(0,0,0,0.2);"></p>
+            </div>
+        </div>
+    </div>
+    <div class="button-container">
+        <button id="backBtn" class="action-button" onclick="goBack()" style="background-color: #757575;">
+            <span style="font-size: 24px;">↩</span>
+        </button>
+        <button id="dislikeBtn" class="action-button" onclick="dislikeRecipe()" style="background-color: #f44336;">
+            <span style="font-size: 24px;">✕</span>
+        </button>
+        <button id="likeBtn" class="action-button" onclick="likeRecipe()" style="background-color: #4CAF50;">
+            <span style="font-size: 24px;">♥</span>
+        </button>
+        <button id="savedBtn" class="action-button" onclick="showSavedRecipes()" style="background-color: #2196F3;">
+            <span style="font-size: 24px;">☰</span>
+        </button>
+    </div>
+
+    <script>
+        let ingredientPrices = null;
+        
+        let recipes = null;
+        let selectedIngredients = [];
+        let currentRecipe = null;
+        let likedRecipes = new Set();
+        let dislikedRecipes = new Set();
+
+        // Load recipes from sessionStorage
+        window.onload = function() {
+            const storedData = sessionStorage.getItem('recipeData');
+            if (storedData) {
+                const data = JSON.parse(storedData);
+                recipes = data.recipes;
+                selectedIngredients = data.ingredients;
+                ingredientPrices = data.prices;
+                showRandomRecipe();
+                initializeSwipe();
+            } else {
+                alert('No recipe data found. Please select ingredients first.');
+                window.location.href = 'index.html';
+            }
+        };
+
+        function initializeSwipe() {
+            const card = document.getElementById('recipeCard');
+            let startX = 0;
+            let currentX = 0;
+            let isDragging = false;
+
+            card.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+            card.addEventListener('touchstart', e => {
+                startDragging(e.touches[0]);
+            });
+            document.addEventListener('touchmove', e => {
+                drag(e.touches[0]);
+            });
+            document.addEventListener('touchend', stopDragging);
+
+            function startDragging(e) {
+                isDragging = true;
+                startX = e.clientX;
+                card.classList.add('swiping');
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                
+                currentX = e.clientX - startX;
+                card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.03}deg)`;
+                
+                const likeOverlay = card.querySelector('.swipe-overlay.like');
+                const nopeOverlay = card.querySelector('.swipe-overlay.nope');
+                
+                if (currentX > 50) {
+                    likeOverlay.style.opacity = Math.min(currentX / 100, 1);
+                    nopeOverlay.style.opacity = 0;
+                } else if (currentX < -50) {
+                    nopeOverlay.style.opacity = Math.min(-currentX / 100, 1);
+                    likeOverlay.style.opacity = 0;
+                } else {
+                    likeOverlay.style.opacity = 0;
+                    nopeOverlay.style.opacity = 0;
+                }
+            }
+
+            function stopDragging() {
+                if (!isDragging) return;
+                isDragging = false;
+                card.classList.remove('swiping');
+                
+                if (currentX > 100) {
+                    card.classList.add('swipe-right');
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('swipe-right');
+                        card.style.transform = '';
+                        likeRecipe();
+                    }, { once: true });
+                } else if (currentX < -100) {
+                    card.classList.add('swipe-left');
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('swipe-left');
+                        card.style.transform = '';
+                        dislikeRecipe();
+                    }, { once: true });
+                } else {
+                    card.style.transform = '';
+                    const overlays = card.querySelectorAll('.swipe-overlay');
+                    overlays.forEach(overlay => overlay.style.opacity = 0);
+                }
+                currentX = 0;
+            }
+        }
+
+        function showRandomRecipe() {
+            if (!recipes) return;
+
+            // Filter recipes that haven't been liked or disliked
+            const availableRecipes = Object.entries(recipes).filter(([id, recipe]) => {
+                return !likedRecipes.has(id) && !dislikedRecipes.has(id);
+            });
+
+            if (availableRecipes.length === 0) {
+                document.getElementById('completionModal').style.display = 'block';
+                return;
+            }
+
+            // Filter recipes based on components
+            const matchingRecipes = availableRecipes.filter(([id, recipe]) => {
+                // Check if ALL selected components are in the recipe's components array
+                return selectedIngredients.every(component => 
+                    recipe.components.includes(component.toLowerCase())
+                );
+            });
+
+            if (matchingRecipes.length === 0) {
+                alert('No recipes found with all selected ingredients. Please try different ingredients.');
+                return;
+            }
+
+            // Score recipes based on number of matching components
+            const scoredRecipes = matchingRecipes.map(([id, recipe]) => {
+                const matchCount = recipe.components.filter(comp => 
+                    selectedIngredients.includes(comp)
+                ).length;
+                return { id, recipe, score: matchCount };
+            });
+
+            // Sort by score
+            scoredRecipes.sort((a, b) => b.score - a.score);
+            const topRecipes = scoredRecipes;
+            
+            // Select a random recipe from top matches or any recipe if no matches
+            const recipePool = topRecipes.length > 0 ? topRecipes : scoredRecipes;
+            const randomRecipe = recipePool[Math.floor(Math.random() * recipePool.length)];
+            currentRecipe = randomRecipe.id;
+
+            // Display the recipe
+            displayRecipe(randomRecipe.recipe);
+        }
+
+        function displayRecipe(recipe) {
+            const card = document.getElementById('recipeCard');
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95) translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transform = 'scale(1) translateY(0)';
+                card.style.opacity = '1';
+                
+                // Add entrance animations for elements
+                const elements = card.querySelectorAll('.recipe-title, .section-title, #ingredientsList li, .total-price');
+                elements.forEach((el, index) => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        el.style.transition = 'all 0.5s ease';
+                        el.style.opacity = '1';
+                        el.style.transform = 'translateY(0)';
+                    }, index * 100); // Stagger the animations
+                });
+            const overlays = card.querySelectorAll('.swipe-overlay');
+            overlays.forEach(overlay => overlay.style.opacity = 0);
+            
+            document.getElementById('recipeTitle').textContent = recipe.title;
+            
+            const ingredientsList = document.getElementById('ingredientsList');
+            ingredientsList.innerHTML = '';
+            
+            let totalPrice = 0;
+
+            recipe.ingredients.forEach(ingredient => {
+                const li = document.createElement('li');
+                let ingredientText = ingredient;
+                let ingredientPrice = 0;
+                
+                // Check for ingredient prices from ingredients.txt
+                // Sort price keys by length (descending) to match longer ingredient names first
+                const priceKeys = Object.keys(ingredientPrices).sort((a, b) => b.length - a.length);
+                for (const priceKey of priceKeys) {
+                    if (ingredient.toLowerCase().includes(priceKey.toLowerCase())) {
+                        ingredientPrice = ingredientPrices[priceKey];
+                        break; // Stop after finding first match to avoid double counting
+                    }
+                }
+
+                totalPrice += ingredientPrice;
+                
+                // Highlight matching components in ingredients
+                recipe.components.forEach(component => {
+                    if (selectedIngredients.includes(component)) {
+                        const regex = new RegExp(component, 'gi');
+                        ingredientText = ingredientText.replace(regex, match => 
+                            `<span class="matched-ingredient">${match}</span>`);
+                    }
+                });
+                
+                // Add price to ingredient text
+                if (ingredientPrice > 0) {
+                    ingredientText += `<span class="ingredient-price">$${ingredientPrice.toFixed(2)}</span>`;
+                }
+                
+                li.innerHTML = ingredientText;
+                ingredientsList.appendChild(li);
+            });
+
+            // Add total price at the bottom
+            const totalPriceDiv = document.createElement('div');
+            totalPriceDiv.className = 'total-price';
+            totalPriceDiv.textContent = `Estimated Total Cost: $${totalPrice.toFixed(2)}`;
+            ingredientsList.appendChild(totalPriceDiv);
+
+            // Remove old components list if it exists
+            const oldComponentsDiv = document.querySelector('.components-list');
+            if (oldComponentsDiv) {
+                oldComponentsDiv.remove();
+            }
+
+            // Add new components list
+            const componentsDiv = document.createElement('div');
+            componentsDiv.className = 'components-list';
+            componentsDiv.innerHTML = '<h2 class="section-title">Main Components:</h2>';
+            const componentsList = document.createElement('ul');
+            recipe.components.forEach(component => {
+                const li = document.createElement('li');
+                li.className = selectedIngredients.includes(component) ? 'matched-ingredient' : '';
+                li.textContent = component;
+                componentsList.appendChild(li);
+            });
+            componentsDiv.appendChild(componentsList);
+            document.querySelector('.recipe-card').insertBefore(
+                componentsDiv,
+                document.querySelector('.button-container')
+            );
+
+            document.getElementById('instructionsText').textContent = recipe.instructions;
+            }, 300);
+        }
+
+        function likeRecipe() {
+            if (currentRecipe) {
+                const card = document.getElementById('recipeCard');
+                if (!card.classList.contains('swipe-right')) {
+                    card.classList.add('swipe-right');
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('swipe-right');
+                        card.style.transform = '';
+                        likedRecipes.add(currentRecipe);
+                        showRandomRecipe();
+                    }, { once: true });
+                } else {
+                    likedRecipes.add(currentRecipe);
+                    showRandomRecipe();
+                }
+            }
+        }
+
+        function dislikeRecipe() {
+            if (currentRecipe) {
+                const card = document.getElementById('recipeCard');
+                if (!card.classList.contains('swipe-left')) {
+                    card.classList.add('swipe-left');
+                    card.addEventListener('animationend', () => {
+                        card.classList.remove('swipe-left');
+                        card.style.transform = '';
+                        dislikedRecipes.add(currentRecipe);
+                        showRandomRecipe();
+                    }, { once: true });
+                } else {
+                    dislikedRecipes.add(currentRecipe);
+                    showRandomRecipe();
+                }
+            }
+        }
+
+        function showSavedRecipes() {
+            const savedRecipesList = document.getElementById('savedRecipesList');
+            savedRecipesList.innerHTML = '';
+            
+            // Show the modal first
+            document.getElementById('savedRecipesModal').style.display = 'block';
+            
+            if (likedRecipes.size === 0) {
+                savedRecipesList.innerHTML = '<p>No recipes saved yet. Like some recipes to save them!</p>';
+            } else {
+                likedRecipes.forEach(id => {
+                    const recipe = recipes[id];
+                    const recipeDiv = document.createElement('div');
+                    recipeDiv.className = 'saved-recipe';
+                    
+                    const title = document.createElement('h3');
+                    
+                    // Calculate total price for the recipe
+                    let recipeTotalPrice = 0;
+                    recipe.ingredients.forEach(ingredient => {
+                        const priceKeys = Object.keys(ingredientPrices).sort((a, b) => b.length - a.length);
+                        for (const priceKey of priceKeys) {
+                            if (ingredient.toLowerCase().includes(priceKey.toLowerCase())) {
+                                recipeTotalPrice += ingredientPrices[priceKey];
+                                break;
+                            }
+                        }
+                    });
+                    
+                    title.innerHTML = `${recipe.title} <span class="ingredient-price">$${recipeTotalPrice.toFixed(2)}</span>`;
+                    title.onclick = () => toggleRecipeDetails(id);
+                    recipeDiv.appendChild(title);
+                    
+                    const components = document.createElement('div');
+                    components.className = 'saved-recipe-components';
+                    recipe.components.forEach(component => {
+                        if (selectedIngredients.includes(component)) {
+                            const span = document.createElement('span');
+                            span.className = 'saved-recipe-component';
+                            span.textContent = component;
+                            components.appendChild(span);
+                        }
+                    });
+                    recipeDiv.appendChild(components);
+
+                    // Create collapsible details section
+                    const details = document.createElement('div');
+                    details.className = 'saved-recipe-details';
+                    details.id = `recipe-details-${id}`;
+
+                    // Add ingredients section
+                    const ingredientsSection = document.createElement('div');
+                    ingredientsSection.className = 'saved-recipe-section';
+                    ingredientsSection.innerHTML = '<h4>Ingredients:</h4>';
+                    const ingredientsList = document.createElement('ul');
+                    let savedTotalPrice = 0;
+                    recipe.ingredients.forEach(ingredient => {
+                        const li = document.createElement('li');
+                        let ingredientText = ingredient;
+                        let ingredientPrice = 0;
+                        
+                        // Check for ingredient prices
+                        Object.keys(ingredientPrices).forEach(priceKey => {
+                            if (ingredient.toLowerCase().includes(priceKey)) {
+                                ingredientPrice += ingredientPrices[priceKey];
+                            }
+                        });
+
+                        savedTotalPrice += ingredientPrice;
+                        
+                        // Add price to ingredient text
+                        if (ingredientPrice > 0) {
+                            ingredientText += ` <span class="ingredient-price">$${ingredientPrice.toFixed(2)}</span>`;
+                        }
+                        
+                        li.innerHTML = ingredientText;
+                        ingredientsList.appendChild(li);
+                    });
+                    
+                    // Add total price at the bottom
+                    const totalPriceDiv = document.createElement('div');
+                    totalPriceDiv.className = 'total-price';
+                    totalPriceDiv.textContent = `Estimated Total Cost: $${savedTotalPrice.toFixed(2)}`;
+                    ingredientsList.appendChild(totalPriceDiv);
+                    ingredientsSection.appendChild(ingredientsList);
+                    details.appendChild(ingredientsSection);
+
+                    // Add instructions section
+                    const instructionsSection = document.createElement('div');
+                    instructionsSection.className = 'saved-recipe-section';
+                    instructionsSection.innerHTML = `<h4>Instructions:</h4><p>${recipe.instructions}</p>`;
+                    details.appendChild(instructionsSection);
+
+                    recipeDiv.appendChild(details);
+                    savedRecipesList.appendChild(recipeDiv);
+                });
+            }
+        }
+
+        function toggleRecipeDetails(recipeId) {
+            const details = document.getElementById(`recipe-details-${recipeId}`);
+            details.classList.toggle('show');
+        }
+
+        function closeSavedRecipes() {
+            document.getElementById('savedRecipesModal').style.display = 'none';
+        }
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
